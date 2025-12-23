@@ -1,11 +1,16 @@
-
-
+use rlp::Rlp;
 pub enum TxType {
     Legacy,
     EIP2930,
     EIP1559,
 }
 
+#[derive(Debug)]
+pub enum DecodeError {
+    NotRlpList,
+    InvalidFieldCount,
+    RlpError,
+}
 pub enum UnsignedTx {
     Legacy(LegacyTx),
     EIP1559(Eip1559Tx),
@@ -63,15 +68,43 @@ pub struct Eip1559Tx {
 }
 
 impl TxType {
-    pub fn get_tx_type(raw: Vec<u8>) -> TxType {
-    let first_byte: u8 = raw[0];
-    match first_byte {
-        0x01 => TxType::EIP2930,
-        0x02 => TxType::EIP1559,
-        _ => TxType::Legacy,
+    pub fn get_tx_type(raw: &[u8]) -> TxType {
+        match raw.first() {
+            // .first() returns Option<&u8>
+            Some(0x01) => TxType::EIP2930,
+            Some(0x02) => TxType::EIP1559,
+            _ => TxType::Legacy,
+        }
     }
 }
+
+fn decode_legacy(raw: &[u8]) -> Result<(LegacyTx, Signature), DecodeError> {
+    let rlp = Rlp::new(raw);
+    if !rlp.is_list() { 
+        panic!("EVM Transaction is not an RLP List");
+    }
+    let field_count = rlp.item_count().unwrap();
+
+    let nonce: u64 = rlp.val_at(0).unwrap();
+    let gas_price: u128 = rlp.val_at(1).unwrap();
+    let gas_limit: u64 = rlp.val_at(2).unwrap();
+    let to: Option<[u8; 20]> = rlp.val_at(3).unwrap();
+    let value: u128 = rlp.val_at(4).unwrap();
+    let data: Vec<u8> = rlp.val_at(5).unwrap();
+    let v: u64 = rlp.val_at(6).unwrap();
+    let s: u128 = rlp.val_at(7).unwrap();
+    let r: u128 = rlp.val_at(8).unwrap();
+
+    let decoded_tx = LegacyTx {
+        nonce,
+        gas_price,
+        gas_limit,
+        to,
+        value,
+        data,
+    };
+
+    let signature = Signature {r, s, v};
+
+    Ok((decoded_tx, signature));
 }
-
-
-
