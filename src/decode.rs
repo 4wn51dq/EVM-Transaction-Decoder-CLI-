@@ -41,7 +41,7 @@ struct LegacyTx {
     pub nonce: u64,
     pub gas_price: u128,
     pub gas_limit: u64,
-    pub to: Option<[u8; 20]>, // array of 20 bytes and each element is 1 bit unsigned integer (for address)
+    pub to: Option<Vec<u8>>, // array of 20 bytes and each element is 1 bit unsigned integer (for address)
     pub value: u128,
     pub data: Vec<u8>,
 }
@@ -85,15 +85,15 @@ fn decode_legacy(raw: &[u8]) -> Result<(LegacyTx, Signature), DecodeError> {
     }
     let field_count = rlp.item_count().unwrap();
 
-    let nonce: u64 = rlp.val_at(0).unwrap();
-    let gas_price: u128 = rlp.val_at(1).unwrap();
-    let gas_limit: u64 = rlp.val_at(2).unwrap();
-    let to: Option<[u8; 20]> = rlp.val_at(3).unwrap();
-    let value: u128 = rlp.val_at(4).unwrap();
-    let data: Vec<u8> = rlp.val_at(5).unwrap();
-    let v: u64 = rlp.val_at(6).unwrap();
-    let s: u128 = rlp.val_at(7).unwrap();
-    let r: u128 = rlp.val_at(8).unwrap();
+    let nonce: u64 = rlp.val_at(0).map_err(|_| DecodeError::RlpError)?; // rlp.val_at(0).unwrap(); the .unwrap means to just trust the code
+    let gas_price: u128 = rlp.val_at(1).map_err(|_| DecodeError::RlpError)?;
+    let gas_limit: u64 = rlp.val_at(2).map_err(|_| DecodeError::RlpError)?;
+    let to: Option<Vec<u8>> = rlp.val_at(3).map_err(|_| DecodeError::RlpError)?;
+    let value: u128 = rlp.val_at(4).map_err(|_| DecodeError::RlpError)?;
+    let data: Vec<u8> = rlp.val_at(5).map_err(|_| DecodeError::RlpError)?;
+    let v: u64 = rlp.val_at(6).map_err(|_| DecodeError::RlpError)?;
+    let s: u128 = rlp.val_at(7).map_err(|_| DecodeError::RlpError)?;
+    let r: u128 = rlp.val_at(8).map_err(|_| DecodeError::RlpError)?;
 
     let decoded_tx = LegacyTx {
         nonce,
@@ -106,5 +106,5 @@ fn decode_legacy(raw: &[u8]) -> Result<(LegacyTx, Signature), DecodeError> {
 
     let signature = Signature {r, s, v};
 
-    Ok((decoded_tx, signature));
+    Ok((decoded_tx, signature))
 }
